@@ -6,6 +6,8 @@ There is no Dragonframe DMC motion protocol and no USB DMX widget in this build.
 
 The GitHub remote is not configured.
 
+Hardware drawing, RS-485 receiver, bulb drivers, and the loop rate: [docs/hardware.md](docs/hardware.md).
+
 ## Pinout
 
 | Function | GPIO | Notes |
@@ -48,19 +50,19 @@ The 16 PWM levels are mapped through a piecewise RGB ramp, then those 16 colors 
 
 Wire order is R, then G, then B.
 
-## Fire looks
+## How often each LED is updated
 
-`FIRE_ALGO` in [src/fire.h](src/fire.h) selects the look. The default is `FIRE_FBM`. Change it and rebuild.
+`loop` calls `fire` once per PWM channel, then sends the stripe. The look itself is not chosen yet. The call rate does not depend on that choice, as long as `fire` stays cheap next to the LED transfer.
 
-| Value | Name | Look |
-|---|---|---|
-| 1 | `FIRE_FBM` | Three Perlin octaves, mostly bright |
-| 2 | `FIRE_CANDLE` | One slow Perlin octave |
-| 3 | `FIRE_VALUE` | Hashed steps from the permutation table |
-| 4 | `FIRE_COLUMN` | Noise sheared by channel, darker at the top |
-| 5 | `FIRE_SINE` | Two sines, for a wiring check |
+The stripe is 16 colors repeated 4 times, so 64 pixels. Each pixel is 24 bits at 800 kHz:
 
-`perm()` is a flash table of all values 0..65535, shuffled once with a fixed seed (`tools/gen_perm.py`). `perlin_noise()` is 1D and returns about −1..1.
+```
+64 * 24 / 800000 = 1.92 ms
+```
+
+That transfer is blocking, and it happens every pass. DIP reads, three ADC samples, and sixteen `fire` calls add roughly 0.3 ms. One pass is therefore about 2.2 ms, which is about **450 `fire` calls per LED per second**. If the stripe were the only work, the ceiling would be about 520 calls per second (`1 / 1.92 ms`).
+
+A flame only needs on the order of 25 to 50 visible changes per second. The loop recalculates each LED about ten times faster than that.
 
 ## Build
 
