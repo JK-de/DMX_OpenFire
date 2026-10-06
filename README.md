@@ -2,9 +2,11 @@
 
 Raspberry Pi Pico firmware that emulates fire on 16 high-active PWM outputs and a WS2812 stripe. A DIP switch sets the DMX-512 start address. A mode switch selects manual pots or DMX. The onboard LED shows a heartbeat and incoming DMX.
 
-There is no Dragonframe DMC motion protocol and no USB DMX widget in this build. USB CDC prints the measured clock, PWM wrap, and carrier once at boot.
+USB serial speaks the ENTTEC DMX USB Pro widget protocol and does not speak Dragonframe DMC. Open the COM port as an ENTTEC DMX USB Pro at 57600 baud. A label-6 universe is used for one second in place of the XLR input; after that the wire values are kept. The USB id stays a Raspberry Pi Pico. The name strings are manufacturer ENTTEC and product DMX USB PRO.
 
-The GitHub remote is not configured.
+QLC+ and OLA open Pro widgets through libftdi, so they will not send to this CDC port. Dragonframe may only list FTDI COM ports. There is no text on this serial port.
+
+The GitHub remote is https://github.com/JK-de/DMX_OpenFire.
 
 Hardware drawing, RS-485 receiver, bulb drivers, and the loop rate: [docs/hardware.md](docs/hardware.md).
 

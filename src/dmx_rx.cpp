@@ -2,18 +2,26 @@
 
 #include "pins.h"
 
+#include <Arduino.h>
 #include <hardware/gpio.h>
 #include <hardware/irq.h>
 #include <hardware/regs/uart.h>
 #include <hardware/sync.h>
 #include <hardware/uart.h>
 
+#include <cstring>
+
 namespace {
 
+constexpr uint32_t kUsbHoldMs = 1000;
+
 uint8_t g_frame[2][512];
+uint8_t g_usb[512];
 uint8_t g_building = 0;
 volatile uint8_t g_stable = 0;
 volatile bool g_frame_ready = false;
+uint32_t g_usb_ms = 0;
+bool g_usb_valid = false;
 uint16_t g_slot = 0;
 bool g_in_data = false;
 bool g_expect_start = true;
@@ -76,6 +84,24 @@ void dmx_rx_begin() {
   uart_set_irq_enables(uart0, true, false);
 }
 
+void dmx_rx_publish_usb(const uint8_t* slots, uint16_t count) {
+  if (count > 512) {
+    count = 512;
+  }
+  if (slots != nullptr && count > 0) {
+    memcpy(g_usb, slots, count);
+  }
+  if (count < 512) {
+    memset(g_usb + count, 0, static_cast<size_t>(512 - count));
+  }
+  g_usb_ms = millis();
+  if (g_usb_ms == 0) {
+    g_usb_ms = 1;
+  }
+  g_usb_valid = true;
+  g_frame_ready = true;
+}
+
 bool dmx_rx_take_frame() {
   const uint32_t save = save_and_disable_interrupts();
   const bool got = g_frame_ready;
@@ -86,6 +112,14 @@ bool dmx_rx_take_frame() {
 
 void dmx_rx_copy(uint16_t start_channel_1, uint8_t out[16]) {
   const uint16_t base = start_channel_1 < 1 ? 0 : static_cast<uint16_t>(start_channel_1 - 1);
+  const bool usb = g_usb_valid && static_cast<uint32_t>(millis() - g_usb_ms) < kUsbHoldMs;
+  if (usb) {
+    for (uint8_t i = 0; i < 16; ++i) {
+      const uint16_t ch = static_cast<uint16_t>(base + i);
+      out[i] = ch < 512 ? g_usb[ch] : 0;
+    }
+    return;
+  }
   const uint32_t save = save_and_disable_interrupts();
   const uint8_t* src = g_frame[g_stable];
   for (uint8_t i = 0; i < 16; ++i) {

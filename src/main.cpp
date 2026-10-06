@@ -1,4 +1,5 @@
 #include "dmx_rx.h"
+#include "enttec_usb.h"
 #include "fire.h"
 #include "pins.h"
 #include "pwm_out.h"
@@ -6,7 +7,6 @@
 #include "ws2812.h"
 
 #include <Arduino.h>
-#include <hardware/clocks.h>
 
 namespace {
 
@@ -34,7 +34,7 @@ float seconds_since_boot() {
 }  // namespace
 
 void setup() {
-  Serial.begin(115200);
+  enttec_usb_begin();
   pwm_out_begin();
 
   pinMode(kModePin, INPUT_PULLUP);
@@ -48,14 +48,10 @@ void setup() {
   ws2812_begin();
 
   g_last_us = micros();
-  const uint32_t hz = clock_get_hz(clk_sys);
-  const uint32_t counts = static_cast<uint32_t>(pwm_out_top()) + 1u;
-  const uint32_t pwm_hz = counts == 0 ? 0 : hz / counts;
-  Serial.printf("clk %lu Hz  wrap %u  pwm %lu Hz\n", static_cast<unsigned long>(hz), pwm_out_top(),
-                static_cast<unsigned long>(pwm_hz));
 }
 
 void loop() {
+  enttec_usb_poll();
   const float time_s = seconds_since_boot();
   const uint8_t mode = digitalRead(kModePin) == LOW ? 0 : 1;
   const uint16_t start = static_cast<uint16_t>(1u + static_cast<uint16_t>(read_dip()) * 16u);

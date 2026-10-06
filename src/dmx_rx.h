@@ -4,6 +4,9 @@
 
 void dmx_rx_begin();
 
+// Channel bytes after a NULL start code. Slots past count are cleared.
+void dmx_rx_publish_usb(const uint8_t* slots, uint16_t count);
+
 // True once for each published DMX frame. Clears the flag.
 bool dmx_rx_take_frame();
 
